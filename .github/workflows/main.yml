@@ -1,0 +1,33 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with: { distribution: 'temurin', java-version: '17' }
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.22.0', channel: 'stable' }
+      - name: Siapkan proyek
+        run: |
+          mkdir -p lib
+          cp main.dart lib/main.dart
+          flutter create --org com.pushlimits --project-name push_limits_dashboard --platforms android --no-pub .
+          cp main.dart lib/main.dart
+      - name: Perbaiki konfigurasi Android
+        run: |
+          sed -i 's/versionCode = flutter.versionCode/versionCode = 1/' android/app/build.gradle
+          sed -i 's/versionName = flutter.versionName/versionName = "1.0.0"/' android/app/build.gradle
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/' android/app/build.gradle
+          sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 34/' android/app/build.gradle
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/' android/app/build.gradle
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/><application android:usesCleartextTraffic="true"|' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="push_limits_dashboard"/android:label="Push Limits"/' android/app/src/main/AndroidManifest.xml
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with: { name: app-release-apk, path: build/app/outputs/flutter-apk/app-release.apk }
